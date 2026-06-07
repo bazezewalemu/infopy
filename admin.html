@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>አድሚን - የኢንስፔክሽን ፈተና ስርዓት</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .header h1 {
+            color: #667eea;
+            font-size: 1.5rem;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        .tab {
+            background: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+            font-size: 1rem;
+        }
+        .tab.active {
+            background: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+        .btn-secondary {
+            background: #a0aec0;
+            color: white;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background: #f7fafc;
+            font-weight: bold;
+        }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .badge-success { background: #c6f6d5; color: #22543d; }
+        .badge-warning { background: #feebc8; color: #7b341e; }
+        .badge-danger { background: #fed7d7; color: #742a2a; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+        .stat-card h2 {
+            font-size: 2rem;
+            color: #667eea;
+        }
+        .otp-box {
+            background: #f0fff4;
+            border: 2px solid #48bb78;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .otp-code {
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 10px;
+            color: #22543d;
+            font-family: monospace;
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #333;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.2rem; }
+            .tab { padding: 8px 20px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎓 የኢንስፔክሽን መመሪያ ፈተና ስርዓት - አድሚን ፓነል</h1>
+        <button class="btn btn-secondary" onclick="exportAllData()">💾 ውሂብ ማስቀመጫ</button>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('exams')">📚 ፈተናዎች</button>
+        <button class="tab" onclick="showTab('create')">➕ አዲስ ፈተና</button>
+        <button class="tab" onclick="showTab('examinees')">👥 ተፈታኞች</button>
+        <button class="tab" onclick="showTab('results')">📊 ውጤቶች</button>
+    </div>
+
+    <!-- ፈተናዎች ትር -->
+    <div id="examsTab">
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="card">
+            <h3>📋 የተፈጠሩ ፈተናዎች</h3>
+            <div id="examsList"></div>
+        </div>
+    </div>
+
+    <!-- አዲስ ፈተና ፍጠር ትር -->
+    <div id="createTab" style="display:none;">
+        <div class="card">
+            <h3>➕ አዲስ ፈተና መፍጠሪያ</h3>
+            <div class="form-group">
+                <label>የፈተና ርዕስ</label>
+                <input type="text" id="examTitle" placeholder="ለምሳሌ: ኢንስፔክሽን ፈተና 1">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>ምርጫ ጥያቄዎች ብዛት</label>
+                    <input type="number" id="mcqCount" min="1" max="10" value="3">
+                </div>
+                <div class="form-group">
+                    <label>ዳሽ ሙላ ብዛት</label>
+                    <input type="number" id="fillCount" min="0" max="10" value="3">
+                </div>
+                <div class="form-group">
+                    <label>አጭር መልስ ብዛት</label>
+                    <input type="number" id="shortCount" min="0" max="10" value="2">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>ለእያንዳንዱ ጥያቄ ጊዜ (ደቂቃ)</label>
+                    <input type="number" id="timePerQ" min="1" max="10" value="3">
+                </div>
+                <div class="form-group">
+                    <label>ምርጫ ክብደት (ነጥብ)</label>
+                    <input type="number" id="mcqWeight" value="10">
+                </div>
+                <div class="form-group">
+                    <label>ዳሽ ሙላ ክብደት</label>
+                    <input type="number" id="fillWeight" value="10">
+                </div>
+                <div class="form-group">
+                    <label>አጭር መልስ ክብደት</label>
+                    <input type="number" id="shortWeight" value="15">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="createExam()">🚀 ፈተና ፍጠር</button>
+        </div>
+    </div>
+
+    <!-- ተፈታኞች ትር -->
+    <div id="examineesTab" style="display:none;">
+        <div class="card">
+            <h3>👥 ተፈታኞችን መመዝገቢያ</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>የተፈታኝ ሙሉ ስም</label>
+                    <input type="text" id="examineeName" placeholder="ለምሳሌ: አለሙ በከለ">
+                </div>
+                <div class="form-group">
+                    <label>የፈተና ምርጫ</label>
+                    <select id="examSelect"></select>
+                </div>
+            </div>
+            <button class="btn btn-success" onclick="generateOTP()">🔑 OTP አመንጭ</button>
+            <div id="otpResult" style="margin-top: 20px;"></div>
+        </div>
+        
+        <div class="card">
+            <h3>📋 የተመዘገቡ ተፈታኞች</h3>
+            <input type="text" id="searchExaminee" placeholder="🔍 በስም ፈልግ..." style="width:100%; padding:10px; margin-bottom:15px; border-radius:10px; border:1px solid #ddd;" oninput="filterExaminees()">
+            <div id="examineesList"></div>
+        </div>
+    </div>
+
+    <!-- ውጤቶች ትር -->
+    <div id="resultsTab" style="display:none;">
+        <div class="card">
+            <h3>📊 የፈተና ውጤቶች</h3>
+            <input type="text" id="searchResult" placeholder="🔍 በስም ፈልግ..." style="width:100%; padding:10px; margin-bottom:15px; border-radius:10px; border:1px solid #ddd;" oninput="filterResults()">
+            <div id="resultsList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== ውሂብ አስተዳደር ====================
+    let exams = JSON.parse(localStorage.getItem('exams') || '[]');
+    let examinees = JSON.parse(localStorage.getItem('examinees') || '[]');
+    let results = JSON.parse(localStorage.getItem('results') || '[]');
+
+    function saveData() {
+        localStorage.setItem('exams', JSON.stringify(exams));
+        localStorage.setItem('examinees', JSON.stringify(examinees));
+        localStorage.setItem('results', JSON.stringify(results));
+    }
+
+    function showToast(msg, type = 'success') {
+        let toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.style.background = type === 'error' ? '#f56565' : '#48bb78';
+        toast.innerHTML = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    function showTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('examsTab').style.display = tab === 'exams' ? 'block' : 'none';
+        document.getElementById('createTab').style.display = tab === 'create' ? 'block' : 'none';
+        document.getElementById('examineesTab').style.display = tab === 'examinees' ? 'block' : 'none';
+        document.getElementById('resultsTab').style.display = tab === 'results' ? 'block' : 'none';
+        
+        if (tab === 'exams') loadExams();
+        if (tab === 'examinees') loadExaminees();
+        if (tab === 'results') loadResults();
+    }
+
+    // ==================== ፈተና አስተዳደር ====================
+    function createExam() {
+        let title = document.getElementById('examTitle').value.trim();
+        if (!title) { showToast('እባክዎ የፈተና ርዕስ ያስገቡ', 'error'); return; }
+        
+        let mcqCount = parseInt(document.getElementById('mcqCount').value);
+        let fillCount = parseInt(document.getElementById('fillCount').value);
+        let shortCount = parseInt(document.getElementById('shortCount').value);
+        let timePerQ = parseInt(document.getElementById('timePerQ').value);
+        let mcqWeight = parseInt(document.getElementById('mcqWeight').value);
+        let fillWeight = parseInt(document.getElementById('fillWeight').value);
+        let shortWeight = parseInt(document.getElementById('shortWeight').value);
+        
+        let totalQ = mcqCount + fillCount + shortCount;
+        let totalTime = totalQ * timePerQ;
+        
+        let exam = {
+            id: Date.now().toString(),
+            title: title,
+            createdAt: new Date().toISOString(),
+            totalQuestions: totalQ,
+            totalTime: totalTime,
+            mcqCount: mcqCount,
+            fillCount: fillCount,
+            shortCount: shortCount,
+            mcqWeight: mcqWeight,
+            fillWeight: fillWeight,
+            shortWeight: shortWeight,
+            timePerQ: timePerQ,
+            questions: generateQuestions(mcqCount, fillCount, shortCount)
+        };
+        
+        exams.push(exam);
+        saveData();
+        showToast('ፈተና በሚገባ ተፈጥሯል!');
+        loadExams();
+        updateExamSelect();
+        
+        // ቅጹን አጽዳ
+        document.getElementById('examTitle').value = '';
+    }
+    
+    function generateQuestions(mcqCount, fillCount, shortCount) {
+        // የጥያቄ ባንክ - ከመመሪያው የተወሰደ
+        const mcqBank = [
+            { question: 'የዚህ መመሪያ ቁጥር ስንት ነው?', options: ['007/2010', '009/2011', '010/2012', '005/2009'], correct: 1, page: 'ገጽ 1', section: 'ክፍል 1.1', explanation: 'መመሪያ ቁጥር 009/2011' },
+            { question: '"ቢሮ" ማለት ምን ማለት ነው?', options: ['ፌዴራል', 'የአማራ ብሄራዊ ክልላዊ መንግስት መንገድና ትራንስፖርት ቢሮ', 'የዞን መምሪያ', 'የወረዳ ጽ/ቤት'], correct: 1, page: 'ገጽ 4', section: 'ትርጓሜ #1', explanation: 'የክልል ቢሮ ነው' },
+            { question: 'ኢንስፔክሽን ማለት ምን ማለት ነው?', options: ['ተሽከርካሪ መፈተሽ', 'አዋጅ፣ደንብ መፈጸማቸውን ማረጋገጥ', 'አሽከርካሪ መፈተሽ', 'የመንገድ ቁጥጥር'], correct: 1, page: 'ገጽ4', section: 'ትርጓሜ #8', explanation: 'ህጎች መተግበራቸውን ማረጋገጥ' }
+        ];
+        
+        const fillBank = [
+            { question: 'መመሪያው "የትራንስፖርት አገልግሎት ______ ማስፈጸሚያ መመሪያ" ይባላል።', correct: 'ኢንስፔክሽን', page: 'ገጽ4', section: '1.1', explanation: 'ኢንስፔክሽን' },
+            { question: '"መምሪያ" ማለት የ______ መንገድና ትራንስፖርት መምሪያ ነው።', correct: 'ዞን', page: 'ገጽ4', section: '#2', explanation: 'የዞን ደረጃ' }
+        ];
+        
+        const shortBank = [
+            { question: 'የመመሪያው ዓላማ ምንድነው?', correct: 'የትራንስፖርት ህጎች በተገቢው መንገድ መፈጸማቸውን ማረጋገጥ', page: 'ገጽ6', section: '1.4', keywords: ['ህግ', 'መፈጸም', 'ማረጋገጥ'] }
+        ];
+        
+        // በዘፈቀደ መምረጥ
+        let shuffledMcq = [...mcqBank].sort(() => 0.5 - Math.random());
+        let shuffledFill = [...fillBank].sort(() => 0.5 - Math.random());
+        let shuffledShort = [...shortBank].sort(() => 0.5 - Math.random());
+        
+        return {
+            mcq: shuffledMcq.slice(0, mcqCount),
+            fill: shuffledFill.slice(0, fillCount),
+            short: shuffledShort.slice(0, shortCount)
+        };
+    }
+    
+    function loadExams() {
+        let html = '<table><thead><tr><th>ርዕስ</th><th>ጥያቄዎች</th><th>ጊዜ</th><th>የተፈጠረ</th><th>ድርጊት</th></tr></thead><tbody>';
+        exams.forEach(exam => {
+            html += `<tr>
+                <td>${exam.title}</td>
+                <td>${exam.totalQuestions}</td>
+                <td>${exam.totalTime} ደቂቃ</td>
+                <td>${new Date(exam.createdAt).toLocaleDateString()}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteExam('${exam.id}')">🗑️</button></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('examsList').innerHTML = html || '<p>ምንም ፈተና የለም</p>';
+        
+        // ስታቲስቲክስ
+        document.getElementById('statsGrid').innerHTML = `
+            <div class="stat-card"><h2>${exams.length}</h2><p>ፈተናዎች</p></div>
+            <div class="stat-card"><h2>${examinees.length}</h2><p>ተፈታኞች</p></div>
+            <div class="stat-card"><h2>${results.length}</h2><pውጤቶች</p></div>
+            <div class="stat-card"><h2>${results.filter(r => r.percentage >= 50).length}</h2><p>ያለፉ</p></div>
+        `;
+    }
+    
+    function deleteExam(id) {
+        if (confirm('ይህን ፈተና ማጥፋት ይፈልጋሉ?')) {
+            exams = exams.filter(e => e.id !== id);
+            saveData();
+            loadExams();
+            updateExamSelect();
+            showToast('ፈተና ተጥፏል');
+        }
+    }
+    
+    function updateExamSelect() {
+        let select = document.getElementById('examSelect');
+        select.innerHTML = '<option value="">-- ፈተና ይምረጡ --</option>';
+        exams.forEach(exam => {
+            select.innerHTML += `<option value="${exam.id}">${exam.title}</option>`;
+        });
+    }
+    
+    // ==================== OTP አመንጪ ====================
+    function generateOTP() {
+        let name = document.getElementById('examineeName').value.trim();
+        let examId = document.getElementById('examSelect').value;
+        
+        if (!name) { showToast('እባክዎ የተፈታኝ ስም ያስገቡ', 'error'); return; }
+        if (!examId) { showToast('እባክዎ ፈተና ይምረጡ', 'error'); return; }
+        
+        let exam = exams.find(e => e.id === examId);
+        if (!exam) { showToast('ፈተና አልተገኘም', 'error'); return; }
+        
+        // 4-አሃዝ OTP አመንጭ
+        let otp = Math.floor(1000 + Math.random() * 9000).toString();
+        
+        let examinee = {
+            id: Date.now().toString(),
+            name: name,
+            examId: examId,
+            examTitle: exam.title,
+            otp: otp,
+            createdAt: new Date().toISOString(),
+            used: false
+        };
+        
+        examinees.push(examinee);
+        saveData();
+        
+        document.getElementById('otpResult').innerHTML = `
+            <div class="otp-box">
+                <p><strong>📝 ለተፈታኝ፦ ${name}</strong></p>
+                <p><strong>📚 ፈተና፦ ${exam.title}</strong></p>
+                <p>🔑 የአንድ ጊዜ ፓስዎርድ (OTP)፦</p>
+                <div class="otp-code">${otp}</div>
+                <p style="margin-top:10px;">⏰ ይህ OTP አንድ ጊዜ ብቻ ጥቅም ላይ ይውላል</p>
+                <button class="btn btn-primary" onclick="copyOTP('${otp}')">📋 OTP ቅዳ</button>
+            </div>
+        `;
+        
+        loadExaminees();
+        document.getElementById('examineeName').value = '';
+        showToast('OTP በሚገባ ተፈጥሯል!');
+    }
+    
+    function copyOTP(otp) {
+        navigator.clipboard.writeText(otp);
+        showToast('OTP ተቅዷል! ለተፈታኙ መላክ ይችላሉ');
+    }
+    
+    function loadExaminees() {
+        let html = '<table><thead><tr><th>ስም</th><th>ፈተና</th><th>OTP</th><th>ሁኔታ</th><th>የተፈጠረ</th><th>ድርጊት</th></tr></thead><tbody>';
+        examinees.forEach(ex => {
+            let status = ex.used ? '<span class="badge badge-danger">ተጠቅሟል</span>' : '<span class="badge badge-success">ንቁ</span>';
+            html += `<tr>
+                <td>${ex.name}</td>
+                <td>${ex.examTitle}</td>
+                <td><code>${ex.otp}</code></td>
+                <td>${status}</td>
+                <td>${new Date(ex.createdAt).toLocaleDateString()}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteExaminee('${ex.id}')">🗑️</button></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('examineesList').innerHTML = html || '<p>ምንም ተፈታኝ የለም</p>';
+    }
+    
+    function filterExaminees() {
+        let search = document.getElementById('searchExaminee').value.toLowerCase();
+        let filtered = examinees.filter(e => e.name.toLowerCase().includes(search));
+        let html = '<table><thead><tr><th>ስም</th><th>ፈተና</th><th>OTP</th><th>ሁኔታ</th><th>የተፈጠረ</th></tr></thead><tbody>';
+        filtered.forEach(ex => {
+            let status = ex.used ? '<span class="badge badge-danger">ተጠቅሟል</span>' : '<span class="badge badge-success">ንቁ</span>';
+            html += `<tr><td>${ex.name}</td><td>${ex.examTitle}</td><td><code>${ex.otp}</code></td><td>${status}</td><td>${new Date(ex.createdAt).toLocaleDateString()}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('examineesList').innerHTML = html;
+    }
+    
+    function deleteExaminee(id) {
+        if (confirm('ይህን ተፈታኝ ማጥፋት ይፈልጋሉ?')) {
+            examinees = examinees.filter(e => e.id !== id);
+            saveData();
+            loadExaminees();
+            showToast('ተፈታኝ ተጥፏል');
+        }
+    }
+    
+    // ==================== ውጤት አስተዳደር ====================
+    function loadResults() {
+        let html = '<table><thead><tr><th>ተፈታኝ</th><th>ፈተና</th><th>ውጤት</th><th>ነጥብ</th><th>ቀን</th><th>ዝርዝር</th></tr></thead><tbody>';
+        results.forEach(r => {
+            let badge = r.percentage >= 50 ? '<span class="badge badge-success">አልፏል</span>' : '<span class="badge badge-danger">አላለፈም</span>';
+            html += `<tr>
+                <td>${r.studentName}</td                <td>${r.examTitle}</td
+                <td>${badge} ${r.percentage.toFixed(1)}%</td
+                <td>${r.score}/${r.maxScore}</td
+                <td>${new Date(r.submittedAt).toLocaleString()}</td
+                <td><details><summary>👁️ ማየት</summary><div style="max-height:200px; overflow:auto;">${r.detailsHtml || 'ዝርዝር የለም'}</div></details></td
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('resultsList').innerHTML = html || '<p>ምንም ውጤት የለም</p>';
+    }
+    
+    function filterResults() {
+        let search = document.getElementById('searchResult').value.toLowerCase();
+        let filtered = results.filter(r => r.studentName.toLowerCase().includes(search));
+        let html = '<table><thead><tr><th>ተፈታኝ</th><th>ፈተና</th><th>ውጤት</th><th>ነጥብ</th><th>ቀን</th></tr></thead><tbody>';
+        filtered.forEach(r => {
+            let badge = r.percentage >= 50 ? '<span class="badge badge-success">አልፏል</span>' : '<span class="badge badge-danger">አላለፈም</span>';
+            html += `<tr><td>${r.studentName}</td><td>${r.examTitle}</td><td>${badge} ${r.percentage.toFixed(1)}%</td
+                <td>${r.score}/${r.maxScore}</td
+                <td>${new Date(r.submittedAt).toLocaleString()}</td
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('resultsList').innerHTML = html;
+    }
+    
+    // ==================== ውሂብ ማስቀመጫ ====================
+    function exportAllData() {
+        let data = { exams, examinees, results };
+        let blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = `exam_data_${new Date().toISOString().slice(0,19)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('ውሂብ ተቀምጧል');
+    }
+    
+    // ==================== መጀመሪያ ማስነሻ ====================
+    updateExamSelect();
+    loadExams();
+</script>
+</body>
+</html>

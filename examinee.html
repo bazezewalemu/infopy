@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ተፈታኝ - የኢንስፔክሽን ፈተና ስርዓት</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .timer {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            color: #f56565;
+            font-family: monospace;
+            margin-bottom: 20px;
+        }
+        .option {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .option:hover { background: #f7fafc; border-color: #667eea; }
+        .option.selected { background: #ebf4ff; border-color: #667eea; }
+        .fill-input, .short-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            margin: 8px 0;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-success { background: #48bb78; color: white; }
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 10px;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            background: #48bb78;
+            height: 10px;
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
+        .badge-correct { background: #c6f6d5; color: #22543d; }
+        .badge-wrong { background: #fed7d7; color: #742a2a; }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #333;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+        @media (max-width: 768px) {
+            .card { padding: 20px; }
+            .timer { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div id="otpSection" class="card">
+        <h2>🔐 የፈተና መግቢያ</h2>
+        <p>እባክዎ ከአድሚን የተላከልዎትን OTP ያስገቡ</p>
+        <div class="form-group" style="margin: 20px 0;">
+            <input type="text" id="otpInput" placeholder="4-አሃዝ ኮድ" style="width:100%; padding:15px; font-size:1.5rem; text-align:center; letter-spacing:5px; border-radius:10px; border:2px solid #e0e0e0;">
+        </div>
+        <button class="btn btn-primary" style="width:100%;" onclick="verifyOTP()">✅ ወደ ፈተና ግባ</button>
+    </div>
+
+    <div id="infoSection" style="display:none;" class="card">
+        <h2>📋 የፈተና መረጃ</h2>
+        <div id="examInfo"></div>
+        <button class="btn btn-success" style="width:100%; margin-top:20px;" onclick="startExam()">🚀 ፈተና ጀምር</button>
+    </div>
+
+    <div id="examSection" style="display:none;">
+        <div class="card">
+            <div class="timer" id="timerDisplay">⏱️ 00:00</div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div id="questionsContainer"></div>
+            <button class="btn btn-primary" style="width:100%; margin-top:20px;" onclick="submitExam()">✅ ፈተናውን አስጨርስ</button>
+        </div>
+    </div>
+
+    <div id="resultSection" style="display:none;" class="card"></div>
+</div>
+
+<script>
+    // ውሂብ ከ localStorage ማንበብ
+    let examinees = JSON.parse(localStorage.getItem('examinees') || '[]');
+    let exams = JSON.parse(localStorage.getItem('exams') || '[]');
+    let results = JSON.parse(localStorage.getItem('results') || '[]');
+    
+    let currentExaminee = null;
+    let currentExam = null;
+    let currentQuestions = [];
+    let answers = {};
+    let timerInterval = null;
+    let timeLeft = 0;
+    
+    function saveResults() {
+        localStorage.setItem('results', JSON.stringify(results));
+        // ለአድሚን ማሳወቂያ - ከፈለጉ ወደ አድሚን ማስተላለፍ ይቻላል
+        if (window.parent !== window) {
+            window.parent.postMessage({ type: 'result', data: results }, '*');
+        }
+    }
+    
+    function showToast(msg) {
+        let toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    function verifyOTP() {
+        let otp = document.getElementById('otpInput').value.trim();
+        if (!otp) { showToast('እባክዎ OTP ያስገቡ'); return; }
+        
+        let examinee = examinees.find(e => e.otp === otp && !e.used);
+        if (!examinee) { showToast('የማይሰራ OTP! እባክዎ ትክክለኛውን ኮድ ያስገቡ'); return; }
+        
+        let exam = exams.find(e => e.id === examinee.examId);
+        if (!exam) { showToast('ፈተና አልተገኘም'); return; }
+        
+        currentExaminee = examinee;
+        currentExam = exam;
+        
+        // የፈተና መረጃ አሳይ
+        let totalPoints = (exam.mcqCount * exam.mcqWeight) + (exam.fillCount * exam.fillWeight) + (exam.shortCount * exam.shortWeight);
+        
+        document.getElementById('examInfo').innerHTML = `
+            <p><strong>📚 ፈተና፦</strong> ${exam.title}</p>
+            <p><strong>❓ ጥያቄዎች ብዛት፦</strong> ${exam.totalQuestions}</p>
+            <p><strong>⚖️ አጠቃላይ ክብደት፦</strong> ${totalPoints} ነጥብ</p>
+            <p><strong>⏰ አጠቃላይ ጊዜ፦</strong> ${exam.totalTime} ደቂቃ</p>
+            <p><strong>📊 የጥያቄ ክፍፍል፦</strong></p>
+            <ul style="margin-left: 20px;">
+                <li>ምርጫ፦ ${exam.mcqCount} ጥያቄ (እያንዳንዱ ${exam.mcqWeight} ነጥብ)</li>
+                <li>ዳሽ ሙላ፦ ${exam.fillCount} ጥያቄ (እያንዳንዱ ${exam.fillWeight} ነጥብ)</li>
+                <li>አጭር መልስ፦ ${exam.shortCount} ጥያቄ (እያንዳንዱ ${exam.shortWeight} ነጥብ)</li>
+            </ul>
+            <p style="color: #ed8936; margin-top: 15px;">⚠️ ፈተናውን ከጀመሩ በኋላ ጊዜው ይቆጠራል!</p>
+        `;
+        
+        document.getElementById('otpSection').style.display = 'none';
+        document.getElementById('infoSection').style.display = 'block';
+    }
+    
+    function startExam() {
+        // OTP እንደተጠቀመ ምልክት አድርግ
+        let index = examinees.findIndex(e => e.id === currentExaminee.id);
+        if (index !== -1) examinees[index].used = true;
+        localStorage.setItem('examinees', JSON.stringify(examinees));
+        
+        buildQuestions();
+        timeLeft = currentExam.totalTime * 60;
+        
+        document.getElementById('infoSection').style.display = 'none';
+        document.getElementById('examSection').style.display = 'block';
+        renderExam();
+        startTimer();
+    }
+    
+    function buildQuestions() {
+        currentQuestions = [];
+        let qNum = 1;
+        
+        if (currentExam.questions.mcq) {
+            currentExam.questions.mcq.forEach(q => {
+                currentQuestions.push({ ...q, type: 'mcq', num: qNum++, weight: currentExam.mcqWeight });
+            });
+        }
+        if (currentExam.questions.fill) {
+            currentExam.questions.fill.forEach(q => {
+                currentQuestions.push({ ...q, type: 'fill', num: qNum++, weight: currentExam.fillWeight });
+            });
+        }
+        if (currentExam.questions.short) {
+            currentExam.questions.short.forEach(q => {
+                currentQuestions.push({ ...q, type: 'short', num: qNum++, weight: currentExam.shortWeight });
+            });
+        }
+    }
+    
+    function renderExam() {
+        let html = '';
+        currentQuestions.forEach(q => {
+            let savedAnswer = answers[q.num];
+            html += `<div style="margin-bottom: 25px; padding: 15px; border-bottom: 1px solid #e0e0e0;" id="q-${q.num}">
+                <h4>${q.num}. ${q.question} <span style="color:#48bb78;">(${q.weight} ነጥብ)</span></h4>`;
+            
+            if (q.type === 'mcq') {
+                html += `<div class="options">`;
+                let letters = ['ሀ', 'ለ', 'ሐ', 'መ'];
+                q.options.forEach((opt, i) => {
+                    let isSelected = (savedAnswer === i);
+                    html += `<div class="option ${isSelected ? 'selected' : ''}" onclick="selectOption(${q.num}, ${i}, this)">
+                        <input type="radio" name="q-${q.num}" ${isSelected ? 'checked' : ''}> 
+                        <label>${letters[i]}) ${opt}</label>
+                    </div>`;
+                });
+                html += `</div>`;
+            } else if (q.type === 'fill') {
+                html += `<input type="text" class="fill-input" placeholder="መልስዎን እዚህ ይጻፉ..." value="${savedAnswer || ''}" oninput="saveAnswer(${q.num}, this.value)">`;
+            } else {
+                html += `<textarea class="short-textarea" rows="3" placeholder="መልስዎን በዝርዝር ይጻፉ..." oninput="saveAnswer(${q.num}, this.value)">${savedAnswer || ''}</textarea>`;
+            }
+            html += `</div>`;
+        });
+        document.getElementById('questionsContainer').innerHTML = html;
+        updateProgress();
+    }
+    
+    function selectOption(qNum, idx, element) {
+        answers[qNum] = idx;
+        let parent = element.closest('.options');
+        if (parent) {
+            parent.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+        }
+        element.classList.add('selected');
+        if (element.querySelector('input')) element.querySelector('input').checked = true;
+        updateProgress();
+    }
+    
+    function saveAnswer(qNum, value) {
+        answers[qNum] = value;
+        updateProgress();
+    }
+    
+    function updateProgress() {
+        let answered = Object.keys(answers).length;
+        let total = currentQuestions.length;
+        let percent = (answered / total) * 100;
+        let progressFill = document.getElementById('progressFill');
+        if (progressFill) progressFill.style.width = percent + '%';
+    }
+    
+    function startTimer() {
+        updateTimerDisplay();
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            updateTimerDisplay();
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                showToast('⏰ ጊዜዎ አልቋል! ፈተናዎ በራስ-ሰር ይላካል');
+                submitExam();
+            }
+        }, 1000);
+    }
+    
+    function updateTimerDisplay() {
+        let mins = Math.floor(timeLeft / 60);
+        let secs = timeLeft % 60;
+        let timerDisplay = document.getElementById('timerDisplay');
+        if (timerDisplay) {
+            timerDisplay.innerHTML = `⏱️ ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            if (timeLeft <= 60) timerDisplay.style.color = '#f56565';
+        }
+    }
+    
+    function submitExam() {
+        if (timerInterval) clearInterval(timerInterval);
+        
+        let totalScore = 0;
+        let maxScore = 0;
+        let detailsHtml = '';
+        
+        for (let q of currentQuestions) {
+            let userAnswer = answers[q.num];
+            let isCorrect = false;
+            let userText = '';
+            let correctText = '';
+            
+            if (q.type === 'mcq') {
+                correctText = q.options[q.correct];
+                userText = (userAnswer !== undefined) ? q.options[userAnswer] : 'አልተመለሰም';
+                isCorrect = (userAnswer === q.correct);
+            } else if (q.type === 'fill') {
+                correctText = q.correct;
+                userText = userAnswer || 'አልተመለሰም';
+                isCorrect = (userAnswer && userAnswer.trim().toLowerCase() === q.correct.trim().toLowerCase());
+            } else {
+                correctText = q.correct;
+                userText = userAnswer || 'አልተመለሰም';
+                if (userAnswer && q.keywords) {
+                    let match = q.keywords.filter(kw => userAnswer.toLowerCase().includes(kw.toLowerCase())).length;
+                    isCorrect = (match / q.keywords.length) >= 0.5;
+                }
+            }
+            
+            if (isCorrect) totalScore += q.weight;
+            maxScore += q.weight;
+            
+            let badge = isCorrect ? '<span class="badge badge-correct">✓ ትክክል</span>' : '<span class="badge badge-wrong">✗ ተሳስተዋል</span>';
+            detailsHtml += `
+                <div style="margin-bottom: 20px; padding: 15px; background: #f7fafc; border-radius: 10px;">
+                    <strong>${q.num}. ${q.question}</strong>
+                    <div style="margin-top: 10px;">
+                        <div><strong>📝 መልስዎ:</strong> ${userText}</div>
+                        <div><strong>✅ ትክክለኛ መልስ:</strong> ${correctText}</div>
+                        <div>${badge}</div>
+                        <div style="margin-top: 8px; font-size: 0.9rem; color: #667eea;">
+                            📖 ማጣቀሻ: ${q.page || 'ገጽ አልተገለጸም'} | ${q.section || 'ክፍል አልተገለጸም'}
+                        </div>
+                        <div style="font-size: 0.85rem; color: #718096;">💡 ${q.explanation || 'ከመመሪያው የተወሰደ'}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        let percentage = (totalScore / maxScore) * 100;
+        
+        let result = {
+            id: Date.now().toString(),
+            studentName: currentExaminee.name,
+            examId: currentExam.id,
+            examTitle: currentExam.title,
+            score: totalScore,
+            maxScore: maxScore,
+            percentage: percentage,
+            detailsHtml: detailsHtml,
+            submittedAt: new Date().toISOString()
+        };
+        
+        results.push(result);
+        saveResults();
+        
+        // ውጤቱን አሳይ
+        document.getElementById('examSection').style.display = 'none';
+        document.getElementById('resultSection').style.display = 'block';
+        
+        let passed = percentage >= 50;
+        document.getElementById('resultSection').innerHTML = `
+            <h2 style="text-align:center; color:${passed ? '#48bb78' : '#f56565'}">${passed ? '🎉 እንኳን ደስ አለዎት!' : '📚 በቃ! ተጨማሪ ጥናት ያስፈልጋል'}</h2>
+            <div style="text-align:center; margin: 20px 0;">
+                <div style="font-size: 3rem; font-weight: bold;">${percentage.toFixed(1)}%</div>
+                <div>${totalScore}/${maxScore} ነጥብ</div>
+            </div>
+            <div style="max-height: 400px; overflow-y: auto;">${detailsHtml}</div>
+            <button class="btn btn-primary" style="width:100%; margin-top:20px;" onclick="location.reload()">🔁 ቀጥሎ ፈተና</button>
+        `;
+    }
+</script>
+</body>
+</html>
